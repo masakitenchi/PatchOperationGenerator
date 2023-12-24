@@ -29,10 +29,15 @@ class PatchOperation:
 			value_node.text = "\n\t\t\t"
 			value_node.append(value)
 			operation.append(value_node)
-		elif isinstance(value, str):
-			if patchclass == "PatchOperationAttributeSet" and attribute is not None:
-				operation.append(ET.fromstring(f"<attribute>{attribute}</attribute>"))
-				operation.append(ET.fromstring(f"<value>{value}</value>"))
+		else:
+			if patchclass == "PatchOperationAttributeSet":
+				print(f'value = {value}')
+				if value != "None":
+					operation.append(ET.fromstring(f"<attribute>{attribute}</attribute>"))
+					operation.append(ET.fromstring(f"<value>{value}</value>"))
+				else:
+					operation.attrib["Class"] = "PatchOperationAttributeRemove"
+					operation.append(ET.fromstring(f"<attribute>{attribute}</attribute>"))
 			else:
 				operation.append(ET.fromstring(f"<value><{node_name}>{value}</{node_name}></value>"))
 		return operation
