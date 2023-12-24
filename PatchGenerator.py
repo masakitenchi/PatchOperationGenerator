@@ -23,16 +23,18 @@ class PatchOperation:
 		node_name = xpath.split("/")[-1]
 		operation = ET.Element("Operation", attrib={"Class": patchclass})
 		operation.append(ET.fromstring(f"<xpath>{xpath}</xpath>"))
-		#print(f'class : {patchclass}, xpath : {xpath}, value : {value}, attribute : {attribute}')
-		if isinstance(value, str):
-			if patchclass == "PatchOperationAttributeSet" and attribute is not None:
-				operation.append(ET.fromstring(f"<attribute>{value}</attribute>"))
-			operation.append(ET.fromstring(f"<value><{node_name}>{value}</{node_name}></value>"))
-		elif isinstance(value, ET._Element):
+		print(f'class : {patchclass}, xpath : {xpath}, value : {value}, attribute : {attribute}')
+		if isinstance(value, ET._Element):
 			value_node = ET.Element("value")
 			value_node.text = "\n\t\t\t"
 			value_node.append(value)
 			operation.append(value_node)
+		elif isinstance(value, str):
+			if patchclass == "PatchOperationAttributeSet" and attribute is not None:
+				operation.append(ET.fromstring(f"<attribute>{attribute}</attribute>"))
+				operation.append(ET.fromstring(f"<value>{value}</value>"))
+			else:
+				operation.append(ET.fromstring(f"<value><{node_name}>{value}</{node_name}></value>"))
 		return operation
 
 	def MergePatchOperation(patchoperations: list[ET.Element]) -> list[ET.Element]:

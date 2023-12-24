@@ -1,6 +1,8 @@
 from lxml import etree
 import os
 import argparse
+import copy
+from regex import R
 from PatchGenerator import PatchOperation
 from file import choose_dir, choose_files
 
@@ -12,24 +14,45 @@ rootL: etree.Element
 rootR: etree.Element
 Operations : list[PatchOperation] = []
 
-def generate_xpath(elem: etree.Element, *,  nodeName: str = None, attrName: str = None, attrValue: str = None) -> str:
+
+def generate_xpath_newtemp(elem: etree.Element) -> str:
+	result: str = ""
+	assertion: str = None
+	elemiter = elem
+	while elemiter is not None:
+		if elemiter.tag.__contains__('Def'):
+			if 'Abstract' in elemiter.attrib and 'Name' in elemiter.attrib:
+				assertion = f'@Name="{elemiter.attrib["Name"]}"'
+			elif elemiter.find('./defName') is not None:
+				assertion = f'defName="{elemiter.find("./defName").text}"'
+		result = elemiter.tag + '/' + result
+		elemiter = elemiter.getparent()
+	if assertion is not None:
+		assertion = '[' + assertion + ']'
+	result = result.removesuffix('/')
+	List = result.split('/')
+	if assertion is not None:
+		List[1] = List[1] + assertion
+	result = '/'.join(List)
+	return result
+
+
+def generate_xpath(elem: etree.Element, *,  defName: str = None, attrName: str = None, attrValue: str = None) -> str:
+	return generate_xpath_newtemp(elem)
 	result: str = ''
 	elemiter = elem.iterancestors()
 	for path in elemiter:
 		result = path.tag + '/' + result
 	result = result.removesuffix('/')
-	#print(result.split('/').__str__())
+	print(result)
 	List = result.split('/')
-	index = len(List)
-	if(elem.tag.__contains__('Def')):
-		if nodeName is not None:
-			List.append(f'[defName="{nodeName}"]')
+	print(List)
+	if (len(List) > 1):
+		if defName is not None:
+			List[1] = List[1] + f'[defName="{defName}"]'
 		elif attrName is not None and attrValue is not None:
-			List.append(f'[@{attrName}="{attrValue}"]')
-	elif nodeName is not None:
-		List[1] = List[1] + f'[defName="{nodeName}"]'
-	elif attrName is not None and attrValue is not None:
-		List[1] = List[1] + f'[@{attrName}="{attrValue}"]'
+			List[1] = List[1] + f'[@{attrName}="{attrValue}"]'
+	print(List)
 	result = '/'.join(List) + '/' + elem.tag
 	return result
 
@@ -37,9 +60,9 @@ def CompareAttr(left: etree.Element, right: etree.Element) -> bool | dict[str, s
 	result = {}
 	for key, value in left.attrib.items():
 		if key not in right.attrib:
-			result[key] = 'None ->' + value
+			result[key] = value + ' -> None' 
 		elif value != right.attrib[key]:
-			result[key] = value + ' -> ' + right.attrib[key]
+			result[key] = right.attrib[key] + ' -> ' + value
 	if result != {}:
 		return result
 	return True
@@ -62,10 +85,12 @@ def CompareInt(
 	if left.attrib != {} and right.attrib != {}:
 		attrResult = CompareAttr(left, right)
 		if isinstance(attrResult, dict):
-			xpath = generate_xpath(left, attrName=attrName, attrValue=attrValue)
-			patchclass = 'PatchOperationAttributeSet'
-			Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=attrResult, attribute=attrName))
-			output.write('\n' + right.tag + attrResult.__str__() + '\n\n')
+			for attrName in attrResult.keys():
+				attrValue = attrResult[attrName].split(' -> ')[1]
+				xpath = generate_xpath(left, attrName=attrName, attrValue=attrValue)
+				patchclass = 'PatchOperationAttributeSet'
+				Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=attrValue, attribute=attrName))
+				output.write('\n' + right.tag + attrResult.__str__() + '\n\n')
 	DL = CreateDict(left)
 	DR = CreateDict(right)
 	for NodeName in DL.keys():
@@ -82,7 +107,7 @@ def CompareInt(
 					continue
 				else:
 					if defType is not None and defName is not None:
-						xpath = generate_xpath(Node, nodeName=defName)
+						xpath = generate_xpath(Node, defName=defName)
 						patchclass = 'PatchOperationReplace'
 						Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node.text))
 						output.write(
@@ -99,7 +124,7 @@ def CompareInt(
 						output.write(f'\txpath: {xpath}\n')
 			elif NodeName not in DR.keys():
 				if defType is not None and defName is not None:
-					xpath = generate_xpath(Node, nodeName=defName)
+					xpath = generate_xpath(Node, defName=defName)
 					# Add to the parent node
 					#print(type(Node))
 					xpath = xpath.removesuffix('/' + xpath.split('/').pop())
@@ -108,7 +133,7 @@ def CompareInt(
 					output.write(
 						f"{rightName} is missing {Node.tag}. name = {defType}.{defName}\n"
 					)
-					output.write(f'\txpath: {generate_xpath(Node, nodeName=defName)}\n')
+					output.write(f'\txpath: {generate_xpath(Node, defName=defName)}\n')
 				else:
 					xpath = generate_xpath(Node, attrName=attrName, attrValue=attrValue)
 					# Add to the parent node
