@@ -26,7 +26,7 @@ class PatchOperation:
 		print(f'class : {patchclass}, xpath : {xpath}, value : {value}, attribute : {attribute}')
 		if isinstance(value, ET._Element):
 			value_node = ET.Element("value")
-			value_node.text = "\n\t\t\t"
+			#value_node.text = "\n\t\t\t"
 			value_node.append(value)
 			operation.append(value_node)
 		else:
@@ -67,4 +67,5 @@ class PatchOperation:
 		for item in patchoperations:
 			root.append(item)
 		tree = ET.ElementTree(root)
+		ET.indent(tree, space="\t", level=1)
 		tree.write(filepath, pretty_print=True, xml_declaration=True, encoding="utf-8")
