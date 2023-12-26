@@ -1,3 +1,4 @@
+from io import TextIOWrapper
 from lxml import etree
 import os
 import argparse
@@ -8,8 +9,8 @@ from file import choose_dir, choose_files
 
 dirname = os.path.split(__file__)[0]
 output = open(os.path.join(dirname, "result.txt"), "w", encoding="utf-8")
-leftName: str
-rightName: str
+leftPath: str
+rightPath: str
 rootL: etree.Element
 rootR: etree.Element
 Operations : list[PatchOperation] = []
@@ -111,7 +112,7 @@ def CompareInt(
 						patchclass = 'PatchOperationReplace'
 						Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node.text))
 						output.write(
-							f'{rightName} has different {Node.tag} in {defType}.{defName}. "{Node.text}" -> "{DR[NodeName][0].text}"\n'
+							f'{rightPath} has different {Node.tag} in {defType}.{defName}. "{Node.text}" -> "{DR[NodeName][0].text}"\n'
 						)
 						output.write(f'\txpath: {xpath}\n')
 					else:
@@ -119,7 +120,7 @@ def CompareInt(
 						patchclass = 'PatchOperationReplace'
 						Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node.text, attribute=attrName))
 						output.write(
-							f'{rightName} has different {Node.tag} in {attrName} = {attrValue}. "{Node.text}" -> "{DR[NodeName][0].text}"\n'
+							f'{rightPath} has different {Node.tag} in {attrName} = {attrValue}. "{Node.text}" -> "{DR[NodeName][0].text}"\n'
 						)
 						output.write(f'\txpath: {xpath}\n')
 			elif NodeName not in DR.keys():
@@ -131,7 +132,7 @@ def CompareInt(
 					patchclass = 'PatchOperationAdd'
 					Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node))
 					output.write(
-						f"{rightName} is missing {Node.tag}. name = {defType}.{defName}\n"
+						f"{rightPath} is missing {Node.tag}. name = {defType}.{defName}\n"
 					)
 					output.write(f'\txpath: {generate_xpath(Node, defName=defName)}\n')
 				else:
@@ -142,7 +143,7 @@ def CompareInt(
 					patchclass = 'PatchOperationAdd'
 					Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node, attribute=attrName))
 					output.write(
-						f"{rightName} is missing {Node.tag} in {attrName} = {attrValue}\n"
+						f"{rightPath} is missing {Node.tag} in {attrName} = {attrValue}\n"
 					)
 					output.write(f'\txpath: {generate_xpath(Node, attrName=attrName, attrValue=attrValue)}\n')
 			elif Node.__len__() > 0:
@@ -151,7 +152,7 @@ def CompareInt(
 				elif attrName is not None and attrValue is not None:
 					CompareInt(Node, DR[NodeName][0], attrName=attrName, attrValue=attrValue)
 
-def Compare(left: etree.Element, right: etree.Element) -> None:
+def Compare(left: etree.Element, right: etree.Element, PatchPath: str | TextIOWrapper) -> None:
 	SubNodeDictL = CreateDict(left)
 	SubNodeDictR = CreateDict(right)
 	# print(SubNodeDictL)
@@ -174,7 +175,7 @@ def Compare(left: etree.Element, right: etree.Element) -> None:
 					CompareInt(Node, elem, attrName='Name', attrValue=NameAttr)
 				else:
 					output.write(
-						f"{rightName} is missing abstract node named {NameAttr}, type = {NodeName}\n"
+						f"{rightPath} is missing abstract node named {NameAttr}, type = {NodeName}\n"
 					)
 			else:  # Non-Abstract Node
 				defName = Node.find("./defName")
@@ -194,9 +195,9 @@ def Compare(left: etree.Element, right: etree.Element) -> None:
 					CompareInt(Node, elem, defType=NodeName, defName=defName.text)
 				else:
 					output.write(
-						f"{rightName} is missing the whole {defName.text}, type = {NodeName}\n"
+						f"{rightPath} is missing the whole {defName.text}, type = {NodeName}\n"
 					)
-	PatchOperation.write_all_operations(os.path.join(dirname, "result.xml"), Operations)
+	PatchOperation.write_all_operations(PatchPath, Operations)
 	return
 
 
@@ -209,20 +210,26 @@ if __name__ == "__main__":
 	# if not result.file.count == 2:
 	if result.folder:
 		dir1, dir2 = choose_dir()
-		files1 = set(f for f in os.listdir(dir1) if f.endswith('.xml'))
-		files2 = set(f for f in os.listdir(dir2) if f.endswith('.xml'))
+		files1 = [f for f in os.listdir(dir1) if f.endswith('.xml')]
+		files2 = [f for f in os.listdir(dir2) if f.endswith('.xml')]
 		for file in files1:
 			if file in files2:
-				leftName = os.path.join(dir1, file)
-				rightName = os.path.join(dir2, file)
-				Left = etree.parse(leftName)
-				Right = etree.parse(rightName)
-				Compare(Left.getroot(), Right.getroot())
-		pass
+				Operations.clear()
+				leftPath = os.path.normpath(os.path.join(dir1, file))
+				rightPath = os.path.normpath(os.path.join(dir2, file))
+				UppererFolder = os.path.sep.join(leftPath.split(os.path.sep)[-3:-1])
+				PatchPath = os.path.join(dirname, 'Patches', UppererFolder, file)
+				if not os.path.exists(os.path.split(PatchPath)[0]):
+					os.makedirs(os.path.split(PatchPath)[0])
+				with open(PatchPath, 'w', encoding='utf-8') as Patch:
+					Left = etree.parse(leftPath)
+					Right = etree.parse(rightPath)
+					Compare(Left.getroot(), Right.getroot(), PatchPath)
+
 	else:
 		result.file = choose_files()
-		leftName = result.file[0]
-		rightName = result.file[1]
+		leftPath = result.file[0]
+		rightPath = result.file[1]
 		print(f"Left = {result.file[0]}")
 		print(f"Right = {result.file[1]}")
 		Left = etree.parse(result.file[0])

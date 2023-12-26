@@ -1,3 +1,4 @@
+from io import TextIOWrapper
 from typing import Any
 import lxml.etree as ET
 import os
@@ -19,6 +20,7 @@ class PatchOperation:
 		value: str = ""
 		attribute: str = None
 
+	@staticmethod
 	def GeneratePatchOperation(*, patchclass: str, xpath: str, value: Any, attribute: str = None) -> ET.Element:
 		node_name = xpath.split("/")[-1]
 		operation = ET.Element("Operation", attrib={"Class": patchclass})
@@ -31,7 +33,7 @@ class PatchOperation:
 			operation.append(value_node)
 		else:
 			if patchclass == "PatchOperationAttributeSet":
-				print(f'value = {value}')
+				#print(f'value = {value}')
 				if value != "None":
 					operation.append(ET.fromstring(f"<attribute>{attribute}</attribute>"))
 					operation.append(ET.fromstring(f"<value>{value}</value>"))
@@ -61,7 +63,7 @@ class PatchOperation:
 		patchoperations = [PatchOperation.GeneratePatchOperation(patchclass=item[0], xpath=item[1], value=operationdict[item]) for item in operationdict]
 		return patchoperations
 	
-	def write_all_operations(filepath: str, patchoperations: list[ET.Element]) -> None:
+	def write_all_operations(filepath: str | TextIOWrapper, patchoperations: list[ET.Element]) -> None:
 		# write all operations to a file
 		root = ET.Element("Patch")
 		for item in patchoperations:
