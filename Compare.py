@@ -8,13 +8,21 @@ from PatchGenerator import PatchOperation
 from file import choose_dir, choose_files
 
 dirname = os.path.split(__file__)[0]
-output = open(os.path.join(dirname, "result.txt"), "w", encoding="utf-8")
+output: TextIOWrapper = None
 leftPath: str
 rightPath: str
 rootL: etree.Element
 rootR: etree.Element
 Operations : list[PatchOperation] = []
 
+
+def log(message: str = None) -> None:
+	global output
+	#print(*args, **kwargs)
+	if not result.verbose: return
+	if output is None:
+		output = open(os.path.join(dirname, 'result.txt'), 'w', encoding='utf-8')
+	output.write(message)
 
 def generate_xpath_newtemp(elem: etree.Element) -> str:
 	result: str = ""
@@ -91,7 +99,7 @@ def CompareInt(
 				xpath = generate_xpath(left, attrName=attrName, attrValue=attrValue)
 				patchclass = 'PatchOperationAttributeSet'
 				Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=attrValue, attribute=attrName))
-				output.write('\n' + right.tag + attrResult.__str__() + '\n\n')
+				log('\n' + right.tag + attrResult.__str__() + '\n\n')
 	DL = CreateDict(left)
 	DR = CreateDict(right)
 	for NodeName in DL.keys():
@@ -103,7 +111,7 @@ def CompareInt(
 					xpath = generate_xpath(Node, attrName=attrName, attrValue=attrValue)
 					patchclass = 'PatchOperationAttributeSet'
 					Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=attrresult, attribute=attrName))
-					output.write('\n' + right.tag + attrresult.__str__() + '\n\n') """
+					log('\n' + right.tag + attrresult.__str__() + '\n\n') """
 				if DR[NodeName][0].text == Node.text:
 					continue
 				else:
@@ -111,18 +119,18 @@ def CompareInt(
 						xpath = generate_xpath(Node, defName=defName)
 						patchclass = 'PatchOperationReplace'
 						Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node.text))
-						output.write(
+						log(
 							f'{rightPath} has different {Node.tag} in {defType}.{defName}. "{Node.text}" -> "{DR[NodeName][0].text}"\n'
 						)
-						output.write(f'\txpath: {xpath}\n')
+						log(f'\txpath: {xpath}\n')
 					else:
 						xpath = generate_xpath(Node, attrName=attrName, attrValue=attrValue)
 						patchclass = 'PatchOperationReplace'
 						Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node.text, attribute=attrName))
-						output.write(
+						log(
 							f'{rightPath} has different {Node.tag} in {attrName} = {attrValue}. "{Node.text}" -> "{DR[NodeName][0].text}"\n'
 						)
-						output.write(f'\txpath: {xpath}\n')
+						log(f'\txpath: {xpath}\n')
 			elif NodeName not in DR.keys():
 				if defType is not None and defName is not None:
 					xpath = generate_xpath(Node, defName=defName)
@@ -131,10 +139,10 @@ def CompareInt(
 					xpath = xpath.removesuffix('/' + xpath.split('/').pop())
 					patchclass = 'PatchOperationAdd'
 					Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node))
-					output.write(
+					log(
 						f"{rightPath} is missing {Node.tag}. name = {defType}.{defName}\n"
 					)
-					output.write(f'\txpath: {generate_xpath(Node, defName=defName)}\n')
+					log(f'\txpath: {generate_xpath(Node, defName=defName)}\n')
 				else:
 					xpath = generate_xpath(Node, attrName=attrName, attrValue=attrValue)
 					# Add to the parent node
@@ -142,10 +150,10 @@ def CompareInt(
 					xpath = xpath.removesuffix('/' + xpath.split('/').pop())
 					patchclass = 'PatchOperationAdd'
 					Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node, attribute=attrName))
-					output.write(
+					log(
 						f"{rightPath} is missing {Node.tag} in {attrName} = {attrValue}\n"
 					)
-					output.write(f'\txpath: {generate_xpath(Node, attrName=attrName, attrValue=attrValue)}\n')
+					log(f'\txpath: {generate_xpath(Node, attrName=attrName, attrValue=attrValue)}\n')
 			elif Node.__len__() > 0:
 				if defType is not None and defName is not None:
 					CompareInt(Node, DR[NodeName][0], defType=defType, defName=defName)
@@ -174,7 +182,7 @@ def Compare(left: etree.Element, right: etree.Element, PatchPath: str | TextIOWr
 					)
 					CompareInt(Node, elem, attrName='Name', attrValue=NameAttr)
 				else:
-					output.write(
+					log(
 						f"{rightPath} is missing abstract node named {NameAttr}, type = {NodeName}\n"
 					)
 			else:  # Non-Abstract Node
@@ -194,7 +202,7 @@ def Compare(left: etree.Element, right: etree.Element, PatchPath: str | TextIOWr
 					)
 					CompareInt(Node, elem, defType=NodeName, defName=defName.text)
 				else:
-					output.write(
+					log(
 						f"{rightPath} is missing the whole {defName.text}, type = {NodeName}\n"
 					)
 	PatchOperation.write_all_operations(PatchPath, Operations)
@@ -204,7 +212,8 @@ def Compare(left: etree.Element, right: etree.Element, PatchPath: str | TextIOWr
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--file", nargs=2, action="store", metavar="Target files")
-	parser.add_argument('--folder', '-f', action='store_true')
+	parser.add_argument('--folder', '-f', action='store_true', help='Choose two folders to compare')
+	parser.add_argument('--verbose', '-v', action='store_true', help='Create a result.txt in root directory, shows all the differences')
 	result = parser.parse_args()
 	#print(result)
 	# if not result.file.count == 2:
@@ -227,7 +236,8 @@ if __name__ == "__main__":
 					Compare(Left.getroot(), Right.getroot(), PatchPath)
 
 	else:
-		result.file = choose_files()
+		if result.file is None:
+			result.file = choose_files()
 		leftPath = result.file[0]
 		rightPath = result.file[1]
 		print(f"Left = {result.file[0]}")

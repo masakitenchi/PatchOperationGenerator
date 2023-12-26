@@ -139,3 +139,4 @@ install_manifest.txt
 
 .vscode/
 Patches/
+result.*
