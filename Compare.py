@@ -15,8 +15,8 @@ rootL: etree.Element
 rootR: etree.Element
 Operations : list[PatchOperation] = []
 
-
-def log(message: str = None) -> None:
+def _log(message: str = None) -> None:
+	"""result.verbose is defined only in this file. DO NOT USE IT IN OTHER FILES"""
 	global output
 	#print(*args, **kwargs)
 	if not result.verbose: return
@@ -29,7 +29,7 @@ def generate_xpath_newtemp(elem: etree.Element) -> str:
 	assertion: str = None
 	elemiter = elem
 	while elemiter is not None:
-		if elemiter.tag.__contains__('Def'):
+		if 'Def' in elemiter.tag:
 			if 'Abstract' in elemiter.attrib and 'Name' in elemiter.attrib:
 				assertion = f'@Name="{elemiter.attrib["Name"]}"'
 			elif elemiter.find('./defName') is not None:
@@ -99,7 +99,7 @@ def CompareInt(
 				xpath = generate_xpath(left, attrName=attrName, attrValue=attrValue)
 				patchclass = 'PatchOperationAttributeSet'
 				Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=attrValue, attribute=attrName))
-				log('\n' + right.tag + attrResult.__str__() + '\n\n')
+				_log('\n' + right.tag + attrResult.__str__() + '\n\n')
 	DL = CreateDict(left)
 	DR = CreateDict(right)
 	for NodeName in DL.keys():
@@ -119,18 +119,18 @@ def CompareInt(
 						xpath = generate_xpath(Node, defName=defName)
 						patchclass = 'PatchOperationReplace'
 						Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node.text))
-						log(
+						_log(
 							f'{rightPath} has different {Node.tag} in {defType}.{defName}. "{Node.text}" -> "{DR[NodeName][0].text}"\n'
 						)
-						log(f'\txpath: {xpath}\n')
+						_log(f'\txpath: {xpath}\n')
 					else:
 						xpath = generate_xpath(Node, attrName=attrName, attrValue=attrValue)
 						patchclass = 'PatchOperationReplace'
 						Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node.text, attribute=attrName))
-						log(
+						_log(
 							f'{rightPath} has different {Node.tag} in {attrName} = {attrValue}. "{Node.text}" -> "{DR[NodeName][0].text}"\n'
 						)
-						log(f'\txpath: {xpath}\n')
+						_log(f'\txpath: {xpath}\n')
 			elif NodeName not in DR.keys():
 				if defType is not None and defName is not None:
 					xpath = generate_xpath(Node, defName=defName)
@@ -139,10 +139,10 @@ def CompareInt(
 					xpath = xpath.removesuffix('/' + xpath.split('/').pop())
 					patchclass = 'PatchOperationAdd'
 					Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node))
-					log(
+					_log(
 						f"{rightPath} is missing {Node.tag}. name = {defType}.{defName}\n"
 					)
-					log(f'\txpath: {generate_xpath(Node, defName=defName)}\n')
+					_log(f'\txpath: {generate_xpath(Node, defName=defName)}\n')
 				else:
 					xpath = generate_xpath(Node, attrName=attrName, attrValue=attrValue)
 					# Add to the parent node
@@ -150,10 +150,10 @@ def CompareInt(
 					xpath = xpath.removesuffix('/' + xpath.split('/').pop())
 					patchclass = 'PatchOperationAdd'
 					Operations.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath, value=Node, attribute=attrName))
-					log(
+					_log(
 						f"{rightPath} is missing {Node.tag} in {attrName} = {attrValue}\n"
 					)
-					log(f'\txpath: {generate_xpath(Node, attrName=attrName, attrValue=attrValue)}\n')
+					_log(f'\txpath: {generate_xpath(Node, attrName=attrName, attrValue=attrValue)}\n')
 			elif Node.__len__() > 0:
 				if defType is not None and defName is not None:
 					CompareInt(Node, DR[NodeName][0], defType=defType, defName=defName)
@@ -176,19 +176,19 @@ def Compare(left: etree.Element, right: etree.Element, PatchPath: str | TextIOWr
 			):  # Abstract Node
 				NameAttr = Node.get("Name")
 				#print(f"Name = {NameAttr}")
-				if (x for x in SubNodeDictR[NodeName] if x.get("Name") == NameAttr) is not None:
+				if any(x for x in SubNodeDictR[NodeName] if x.get("Name") == NameAttr):
 					elem = next(
 						x for x in SubNodeDictR[NodeName] if x.get("Name") == NameAttr
 					)
 					CompareInt(Node, elem, attrName='Name', attrValue=NameAttr)
 				else:
-					log(
+					_log(
 						f"{rightPath} is missing abstract node named {NameAttr}, type = {NodeName}\n"
 					)
 			else:  # Non-Abstract Node
 				defName = Node.find("./defName")
 				#print(f"defName = {defName.text}")
-				if any(
+				if defName in SubNodeDictR.keys() and any(
 					x
 					for x in SubNodeDictR[NodeName]
 					if x.find("./defName") != None
@@ -202,7 +202,7 @@ def Compare(left: etree.Element, right: etree.Element, PatchPath: str | TextIOWr
 					)
 					CompareInt(Node, elem, defType=NodeName, defName=defName.text)
 				else:
-					log(
+					_log(
 						f"{rightPath} is missing the whole {defName.text}, type = {NodeName}\n"
 					)
 	PatchOperation.write_all_operations(PatchPath, Operations)
@@ -227,7 +227,7 @@ if __name__ == "__main__":
 				leftPath = os.path.normpath(os.path.join(dir1, file))
 				rightPath = os.path.normpath(os.path.join(dir2, file))
 				UppererFolder = os.path.sep.join(leftPath.split(os.path.sep)[-3:-1])
-				PatchPath = os.path.join(dirname, 'Patches', UppererFolder, file)
+				PatchPath = os.path.join(dirname, 'Patches', 'CombatExtended', UppererFolder, file)
 				if not os.path.exists(os.path.split(PatchPath)[0]):
 					os.makedirs(os.path.split(PatchPath)[0])
 				with open(PatchPath, 'w', encoding='utf-8') as Patch:
@@ -246,4 +246,4 @@ if __name__ == "__main__":
 		Right = etree.parse(result.file[1])
 		rootL = Left.getroot()  # Should be 'Defs'
 		rootR = Right.getroot()  # Should be 'Defs'
-		Compare(rootL, rootR)
+		Compare(rootL, rootR, './Patch.xml')
