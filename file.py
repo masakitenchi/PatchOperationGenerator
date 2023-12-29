@@ -9,10 +9,10 @@ def choose_dir() -> tuple[str, str]:
 	root = tk.Tk()
 	root.withdraw()
 	dir1 = filedialog.askdirectory(
-		mustexist=True, initialdir='D:\\SteamLibrary\\steamapps\\common\\RimWorld\\Mods\\Core_SK\\Defs\\CombatExtended\\Ammo', title="Choose Folder"
+		mustexist=True, initialdir='E:\CACHE\Hardcore-SK\Mods\Core_SK\Defs\CombatExtended\Ammo', title="Choose Folder"
 	)
 	dir2 = filedialog.askdirectory(
-		mustexist=True, initialdir='D:\\SteamLibrary\\steamapps\\workshop\\content\\294100\\2890901044\\Defs\\Ammo', title="Choose Folder"
+		mustexist=True, initialdir='D:\SteamLibrary\steamapps\common\RimWorld\Mods\CombatExtended\Defs\Ammo', title="Choose Folder"
 	)
 	if os.path.isdir(dir1) and os.path.isabs(dir1) and os.path.isdir(dir2) and os.path.isabs(dir2): 
 		return (dir1, dir2)

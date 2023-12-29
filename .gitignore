@@ -141,3 +141,5 @@ install_manifest.txt
 Patches/
 result.*
 test*.xml
+MissingFiles/
+Patch.xml
