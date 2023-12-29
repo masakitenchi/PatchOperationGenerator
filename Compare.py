@@ -1,14 +1,10 @@
-from importlib.metadata import files
 from io import TextIOWrapper
-from turtle import right
 from lxml import etree
 import os
 import argparse
-import copy
-from regex import R
 from PatchGenerator import PatchOperation
 from file import choose_dir, choose_files
-from DefComparer import compare_root, comp_list
+from DefComparer import compare_root
 
 dirname = os.path.split(__file__)[0]
 output: TextIOWrapper = None

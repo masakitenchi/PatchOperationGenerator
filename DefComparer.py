@@ -1,7 +1,6 @@
 import lxml.etree as ET
 from PatchGenerator import PatchOperation
 
-comp_list: int = 0
 nesting_list: list[str] = []
 
 def is_in(defName_NamePair: tuple[str, str], dictionary: dict[tuple[str, str], ET._Element]) -> bool:
@@ -65,7 +64,6 @@ def _compare_text(left: ET._Element, right: ET._Element) -> bool:
 	return left.text == right.text
 
 def _compare_recursive(left: ET._Element, right: ET._Element) -> list[ET._Element]:
-	global comp_list
 	"""Compare two elements recursively\n When encountering a difference other than attribute, it will return a list of PatchOperation"""
 	Operations = []
 	# Compare attributes
@@ -93,7 +91,6 @@ def _compare_recursive(left: ET._Element, right: ET._Element) -> list[ET._Elemen
 	if (left.find('./li') != None and right.find('./li') != None) and \
 	all(x.__len__() == 0 for x in list(left.findall('./li'))) and \
 	all(x.__len__() == 0 for x in list(right.findall('./li'))):
-		comp_list += 1
 		add_list, remove_list = _compare_list(left, right)
 		for item in add_list:
 			# Add PatchOperationAdd
@@ -196,7 +193,6 @@ def compare_root(left : ET._ElementTree, right: ET._ElementTree) -> list[ET._Ele
 			patchclass = 'PatchOperationRemove'
 			xpath = generate_xpath(right_dict[item])
 			result.append(PatchOperation.GeneratePatchOperation(patchclass=patchclass, xpath=xpath))
-	print(comp_list)
 	return result
 
 
