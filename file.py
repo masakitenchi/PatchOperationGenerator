@@ -5,7 +5,7 @@ import sys
 
 dirname = os.path.split(__file__)[0]
 
-def choose_dir() -> tuple[str, str]: 
+def _choose_dir() -> tuple[str, str]: 
 	root = tk.Tk()
 	root.withdraw()
 	dir1 = filedialog.askdirectory(

@@ -3,7 +3,7 @@ from lxml import etree
 import os
 import argparse
 from PatchGenerator import PatchOperation
-from file import choose_dir, choose_files
+from file import _choose_dir, choose_files
 from DefComparer import compare_root
 
 dirname = os.path.split(__file__)[0]
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 	if result.recursive:
 		# print('Recursive mode')
 		if result.folder:
-			dir1, dir2 = choose_dir()
+			dir1, dir2 = _choose_dir()
 			files1 = recursive_search(dir1)
 			files2 = recursive_search(dir2)
 			#print(files1)
@@ -110,7 +110,7 @@ if __name__ == "__main__":
 			rootL = Left.getroot()
 
 	elif result.folder:
-		dir1, dir2 = choose_dir()
+		dir1, dir2 = _choose_dir()
 		#print(dir1, dir2)
 		files1 = [f for f in os.listdir(dir1) if f.endswith('.xml')]
 		files2 = [f for f in os.listdir(dir2) if f.endswith('.xml')]

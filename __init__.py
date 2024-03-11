@@ -1,0 +1,1 @@
+__spec__.name = 'PatchOperationGenerator'
