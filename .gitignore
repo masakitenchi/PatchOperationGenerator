@@ -143,3 +143,5 @@ result.*
 test*.xml
 MissingFiles/
 Patch.xml
+merged.json
+output.xml
