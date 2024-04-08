@@ -1,9 +1,7 @@
 from io import TextIOWrapper
 from typing import Any
 import lxml.etree as ET
-import os
 
-from numpy import isin
 
 # A valid PatchOperation consists of a xpath, a value and a patchclass.
 """
