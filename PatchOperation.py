@@ -23,32 +23,56 @@ class PatchOperation():
 	value: str | list[str]
 	condition: str
 	merged: bool = False
+	sourcenode: ET._Element = None
 
-	def __init__(self, _class: str, xpath: str, value: str | list[str] = None, attribute: str = None) -> None:
-		self._class = _class
-		self.xpath = xpath
+	def __init__(self, node: ET._Element) -> None:
+		try:
+			if node.find('value') is not None:
+				if node.find('value').__len__() > 0:
+					value = list(node.find('value'))
+				else:
+					value = [node.find('value').text]
+			else: value = None
+		except Exception:
+			self.sourcenode = node
+			return
+		self._class = node.get("Class")
+		self.xpath = node.find("xpath").text
 		self.value = value
-		self.attribute = attribute
-		match = xpath_regex.match(xpath)
+		self.attribute = node.find("attribute").text if node.find("attribute") is not None else None
+		match = xpath_regex.match(self.xpath)
 		if match:
 			self.defType = match['defType']
 			self.targetNode = match['field']
 			self.condition = match['condition']
 
 	def to_ET(self) -> ET.Element:
+		if self.sourcenode is not None:
+			return self.sourcenode
 		root = ET.Element("Operation")
 		root.set("Class", self._class)
 		xpath = ET.Element("xpath")
 		xpath.text = self.xpath
 		root.append(xpath)
+		if self.attribute is not None:
+			attribute = ET.Element("attribute")
+			attribute.text = self.attribute
+			root.append(attribute)
 		if self.value is not None:
 			value = ET.Element("value")
 			if isinstance(self.value, list):
 				for v in self.value:
 					try:
-						value.append(ET.fromstring(v))
+						if isinstance(v, ET._Element):
+							value.append(v)
+						elif isinstance(v, str):
+							value.append(ET.fromstring(v))
+						elif v is None:
+							pass
+						#value.text = '\n\t\t\t'
 					except ET.XMLSyntaxError as e:
-						print(f"Error: {e}, v: {v}")
+						if "Start tag expected" in str(e):
+							value.text = v
 			else:
 				value.text = self.value
 			root.append(value)
@@ -77,15 +101,9 @@ def test() -> None:
 	tree = ET.parse(addr)
 	root = tree.getroot()
 	for node in filter(lambda x: x is not ET.Comment, root):
-		if node.find('value') is not None:
-			if node.find('value').__len__() > 0:
-				value = [ node_to_str(x) for x in list(node.find('value'))]
-			else:
-				value = [node.find('value').text]
-		else: value = None
-		patches.append(PatchOperation(node.get("Class"), node.find("xpath").text, value))
+		patches.append(PatchOperation(node))
 	merged = {}
-	for patch in patches:
+	for patch in filter(lambda x: x.sourcenode is None,patches):
 		if patch._class not in merged:
 			merged[patch._class] = []
 		merged[patch._class].append(patch)
@@ -127,7 +145,7 @@ def merge_add(patches: list[PatchOperation]) -> None:
 		for j in range(1, len(patches) - 1):
 			if patches[j].merged or i == j: continue
 			if patches[i].xpath == patches[j].xpath:
-				print(f"Merge {patches[i].xpath} with {patches[j].xpath}")
+				#print(f"Merge {patches[i].xpath} with {patches[j].xpath}")
 				patches[i].merge_value(patches[j])
 				patches[j].merged = True
 
